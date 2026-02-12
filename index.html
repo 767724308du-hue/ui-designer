@@ -584,38 +584,7 @@
             margin-top: 2px;
         }
 
-        /* 模式切换按钮 */
-        .mode-toggle {
-            display: flex;
-            background: var(--bg-primary);
-            border-radius: 6px;
-            padding: 2px;
-        }
-        .mode-toggle-btn {
-            padding: 6px 12px;
-            border: none;
-            background: transparent;
-            color: var(--text-secondary);
-            font-size: 11px;
-            font-weight: 500;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.15s;
-            white-space: nowrap;
-        }
-        .mode-toggle-btn i {
-            margin-right: 4px;
-        }
-        .mode-toggle-btn:hover {
-            color: var(--text-primary);
-        }
-        .mode-toggle-btn.active {
-            background: #fff;
-            color: var(--text-primary);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        /* 开发标注浮层 */
+        /* 开发标注浮层（仅用于导出功能） */
         .dev-annotation-overlay {
             position: fixed;
             background: rgba(30, 30, 30, 0.95);
@@ -2391,26 +2360,13 @@
     <!-- Top Toolbar -->
     <div class="top-toolbar">
         <div class="toolbar-group">
-            <button class="toolbar-btn" id="undoBtn" disabled><i class="fas fa-undo"></i><span class="btn-tooltip"><span class="tip-cn">撤销</span><span class="tip-en">Undo (Ctrl+Z)</span></span></button>
-            <button class="toolbar-btn" id="redoBtn" disabled><i class="fas fa-redo"></i><span class="btn-tooltip"><span class="tip-cn">重做</span><span class="tip-en">Redo (Ctrl+Y)</span></span></button>
+            <button class="toolbar-btn" id="undoBtn" disabled><i class="fas fa-undo"></i><span class="btn-tooltip"><span class="tip-cn">撤销</span><span class="tip-en">Undo</span></span></button>
+            <button class="toolbar-btn" id="redoBtn" disabled><i class="fas fa-redo"></i><span class="btn-tooltip"><span class="tip-cn">重做</span><span class="tip-en">Redo</span></span></button>
             <div class="toolbar-divider"></div>
-            <button class="toolbar-btn" id="saveBtn"><i class="fas fa-save"></i><span class="btn-tooltip"><span class="tip-cn">保存</span><span class="tip-en">Save (Ctrl+S)</span></span></button>
-            <button class="toolbar-btn" id="loadBtn"><i class="fas fa-folder-open"></i><span class="btn-tooltip"><span class="tip-cn">加载</span><span class="tip-en">Load Project</span></span></button>
-            <button class="toolbar-btn" id="exportBtn"><i class="fas fa-file-export"></i><span class="btn-tooltip"><span class="tip-cn">导出</span><span class="tip-en">Export HTML</span></span></button>
-            <button class="toolbar-btn" id="exportJsonBtn"><i class="fas fa-file-code"></i><span class="btn-tooltip"><span class="tip-cn">JSON</span><span class="tip-en">Export JSON</span></span></button>
-        </div>
-        <div class="toolbar-group">
-            <button class="toolbar-btn" id="distributeHBtn"><i class="fas fa-grip-lines-vertical"></i><span class="btn-tooltip"><span class="tip-cn">水平均分</span><span class="tip-en">Distribute H</span></span></button>
-            <button class="toolbar-btn" id="distributeVBtn"><i class="fas fa-grip-lines"></i><span class="btn-tooltip"><span class="tip-cn">垂直均分</span><span class="tip-en">Distribute V</span></span></button>
-        </div>
-        <div class="toolbar-group">
-            <button class="toolbar-btn" id="clearAllBtn"><i class="fas fa-trash-alt"></i><span class="btn-tooltip"><span class="tip-cn">清空</span><span class="tip-en">Clear All</span></span></button>
-        </div>
-        <div class="toolbar-group">
-            <div class="mode-toggle">
-                <button class="mode-toggle-btn active" id="modeUIBtn" data-mode="ui"><i class="fas fa-eye"></i> UI预览</button>
-                <button class="mode-toggle-btn" id="modeDevBtn" data-mode="dev"><i class="fas fa-code"></i> 开发标注</button>
-            </div>
+            <button class="toolbar-btn" id="saveBtn"><i class="fas fa-save"></i><span class="btn-tooltip"><span class="tip-cn">保存</span><span class="tip-en">Save</span></span></button>
+            <button class="toolbar-btn" id="exportBtn"><i class="fas fa-file-export"></i><span class="btn-tooltip"><span class="tip-cn">导出</span><span class="tip-en">Export</span></span></button>
+            <div class="toolbar-divider"></div>
+            <button class="toolbar-btn" id="clearAllBtn"><i class="fas fa-trash-alt"></i><span class="btn-tooltip"><span class="tip-cn">清空</span><span class="tip-en">Clear</span></span></button>
         </div>
     </div>
 
@@ -2817,6 +2773,17 @@
         if (phoneScreen) phoneScreen.style.overflow = '';
 
         if (isDragging && currentDragBlock) {
+            // 调试：记录拖拽结束时的位置
+            console.log('[拖拽结束] id=' + currentDragBlock.id +
+                        ' type=' + currentDragBlock.type +
+                        ' 新位置: x=' + (currentDragBlock.style.x || 0).toFixed(1) + '% y=' + (currentDragBlock.style.y || 0).toFixed(1) + '%');
+
+            // 验证 blocks 数组中对应的 block 也被更新了
+            var verifyBlock = findBlock(currentDragBlock.id);
+            if (verifyBlock) {
+                console.log('[验证] blocks数组中: x=' + (verifyBlock.style.x || 0).toFixed(1) + '% y=' + (verifyBlock.style.y || 0).toFixed(1) + '%');
+            }
+
             clearAlignGuides();
             clearDistanceBubbles();
             saveHistory();
@@ -3484,6 +3451,13 @@
         render();
         saveHistory();
 
+        // 调试：输出模板加载后的状态
+        console.log('[模板加载完成] ' + template.name + ' | blocks数量=' + blocks.length);
+        blocks.forEach(function(b, i) {
+            console.log('  [' + i + '] id=' + b.id + ' type=' + b.type +
+                        ' x=' + (b.style.x || 0).toFixed(1) + '% y=' + (b.style.y || 0).toFixed(1) + '%');
+        });
+
         // 切换到自由设计模式，显示组件库
         if (typeof window.setModeActive === 'function') {
             window.setModeActive('free', true);
@@ -3937,34 +3911,18 @@
         document.getElementById('undoBtn').onclick = undo;
         document.getElementById('redoBtn').onclick = redo;
         document.getElementById('saveBtn').onclick = saveProject;
-        document.getElementById('loadBtn').onclick = loadProject;
         document.getElementById('exportBtn').onclick = exportHTML;
-        document.getElementById('exportJsonBtn').onclick = exportJSON;
         document.getElementById('clearAllBtn').onclick = clearAll;
 
-        // Distribute buttons
-        document.getElementById('distributeHBtn').onclick = function() { distributeBlocks('horizontal'); };
-        document.getElementById('distributeVBtn').onclick = function() { distributeBlocks('vertical'); };
-
-        // ==================== 开发标注模式 ====================
+        // ==================== 开发标注模式（内部使用，不暴露UI） ====================
         var devMode = false;
         var devAnnotation = document.getElementById('devAnnotation');
         var devAnnotationTitle = document.getElementById('devAnnotationTitle');
         var devAnnotationContent = document.getElementById('devAnnotationContent');
 
-        // 模式切换按钮
-        document.getElementById('modeUIBtn').onclick = function() {
-            setDevMode(false);
-        };
-        document.getElementById('modeDevBtn').onclick = function() {
-            setDevMode(true);
-        };
-
         function setDevMode(enabled) {
             devMode = enabled;
             document.body.classList.toggle('dev-mode', enabled);
-            document.getElementById('modeUIBtn').classList.toggle('active', !enabled);
-            document.getElementById('modeDevBtn').classList.toggle('active', enabled);
             if (!enabled) {
                 hideDevAnnotation();
             }
@@ -4118,6 +4076,23 @@
                 } else if (e.key === 's') {
                     e.preventDefault();
                     saveProject();
+                } else if (e.key === 'd') {
+                    // Ctrl+D: 调试 - 输出当前 blocks 状态
+                    e.preventDefault();
+                    console.log('╔══════════════════════════════════════════════════════════╗');
+                    console.log('║     Ctrl+D 调试：当前画布状态                            ║');
+                    console.log('╠══════════════════════════════════════════════════════════╣');
+                    console.log('║ blocks 数组长度:', blocks.length);
+                    console.log('║ layoutMode:', layoutMode);
+                    console.log('╠══════════════════════════════════════════════════════════╣');
+                    blocks.forEach(function(b, i) {
+                        var info = '║ [' + i + '] id=' + b.id + ' type=' + b.type +
+                                   ' x=' + (b.style && b.style.x !== undefined ? b.style.x.toFixed(1) : 'N/A') + '%' +
+                                   ' y=' + (b.style && b.style.y !== undefined ? b.style.y.toFixed(1) : 'N/A') + '%';
+                        if (b.props && b.props.title) info += ' title="' + b.props.title + '"';
+                        console.log(info);
+                    });
+                    console.log('╚══════════════════════════════════════════════════════════╝');
                 }
             }
             // Delete key
@@ -4525,6 +4500,9 @@
         }
 
         blocks.push(block);
+        console.log('[添加组件] id=' + block.id + ' type=' + block.type +
+                    ' x=' + (block.style.x || 0).toFixed(1) + '% y=' + (block.style.y || 0).toFixed(1) + '%' +
+                    ' | blocks总数=' + blocks.length);
         saveHistory();
         render();
         selectBlock(block.id, false);
@@ -4579,6 +4557,9 @@
         }
 
         blocks.push(block);
+        console.log('[拖入组件] id=' + block.id + ' type=' + block.type +
+                    ' x=' + (block.style.x || 0).toFixed(1) + '% y=' + (block.style.y || 0).toFixed(1) + '%' +
+                    ' | blocks总数=' + blocks.length);
         saveHistory();
         render();
         selectBlock(block.id, false);
@@ -5990,33 +5971,6 @@
         showToastMsg('已保存到本地');
     }
 
-    function loadProject() {
-        var input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.onchange = function(e) {
-            var file = e.target.files[0];
-            if (!file) return;
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    var data = JSON.parse(e.target.result);
-                    blocks = data.blocks || [];
-                    idCounter = data.idCounter || 0;
-                    globalStyle = data.globalStyle || globalStyle;
-                    saveHistory();
-                    render();
-                    applyGlobal();
-                    showToastMsg('加载成功');
-                } catch (err) {
-                    showToastMsg('加载失败: 文件格式错误');
-                }
-            };
-            reader.readAsText(file);
-        };
-        input.click();
-    }
-
     function exportJSON() {
         var data = {
             blocks: blocks,
@@ -6145,65 +6099,215 @@
     }
 
     // 构建导出 HTML（保持与编辑器画布一致的手机容器结构）
+    // 生成导出用的干净HTML（无编辑器控件）
+    function renderExportBlock(block, exportType, index) {
+        var s = block.style;
+        var p = block.props;
+        var inspectAttr = exportType === 'inspect' ? ' data-inspect="block-' + index + '"' : '';
+
+        switch (block.type) {
+            case 'navbar':
+                var navRadius = s.radius ? 'border-radius:' + s.radius + 'px;' : '';
+                var navHeight = s.h && s.h !== 'auto' ? 'height:' + s.h + 'px;' : '';
+                return '<div class="ios-navbar"' + inspectAttr + ' style="background:' + s.bg + ';' + navRadius + navHeight + '">' +
+                    '<div class="ios-navbar-left">' + (p.showLeft ? '<button class="ios-navbar-btn" style="color:' + s.btnColor + '"><i class="fas fa-chevron-left"></i> ' + p.left + '</button>' : '') + '</div>' +
+                    '<span class="ios-navbar-title" style="color:' + s.titleColor + ';font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + '">' + (p.title || '') + '</span>' +
+                    '<div class="ios-navbar-right">' + (p.showRight ? '<button class="ios-navbar-btn" style="color:' + s.btnColor + '">' + p.right + '</button>' : '') + '</div></div>';
+
+            case 'large-title':
+                var ltRadius = s.radius ? 'border-radius:' + s.radius + 'px;' : '';
+                return '<div class="ios-large-title"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;' + ltRadius + '">' +
+                    '<h1 style="color:' + s.color + ';font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + ';line-height:' + s.lineHeight + '">' + (p.title || '') + '</h1></div>';
+
+            case 'search':
+                var searchRadius = s.radius ? 'border-radius:' + s.radius + 'px;' : '';
+                return '<div class="ios-search"' + inspectAttr + ' style="background:' + s.bg + ';padding:8px ' + s.px + 'px;' + searchRadius + '">' +
+                    '<div class="ios-search-wrapper"><i class="fas fa-search" style="color:' + s.placeholderColor + '"></i>' +
+                    '<input type="text" class="ios-search-input" placeholder="' + p.placeholder + '" style="background:' + s.inputBg + ';color:' + s.color + ';font-size:' + s.fontSize + 'px;border-radius:' + (s.inputRadius || 10) + 'px"></div></div>';
+
+            case 'section-header':
+                var shRadius = s.radius ? 'border-radius:' + s.radius + 'px;' : '';
+                return '<div class="ios-section-header"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px 8px;' + shRadius + '">' +
+                    '<span style="color:' + s.color + ';font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + '">' + (p.title || '') + '</span></div>';
+
+            case 'list-item':
+                var liIconRadius = s.iconRadius !== undefined ? s.iconRadius : 7;
+                return '<div class="ios-list-item"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' +
+                    '<div class="ios-list-icon" style="background:' + p.iconBg + ';width:' + s.iconSize + 'px;height:' + s.iconSize + 'px;border-radius:' + liIconRadius + 'px"><i class="fas ' + p.icon + '"></i></div>' +
+                    '<div class="ios-list-content"><div class="ios-list-title" style="color:' + s.titleColor + ';font-size:' + s.titleSize + 'px;font-weight:' + (s.titleWeight || 400) + '">' + (p.title || '') + '</div>' +
+                    (p.subtitle ? '<div class="ios-list-subtitle" style="color:' + s.subColor + ';font-size:' + s.subSize + 'px">' + p.subtitle + '</div>' : '') + '</div>' +
+                    (p.value ? '<span class="ios-list-value" style="color:' + s.valueColor + '">' + p.value + '</span>' : '') +
+                    (p.arrow ? '<span class="ios-list-accessory"><i class="fas fa-chevron-right"></i></span>' : '') + '</div>';
+
+            case 'toggle-item':
+                return '<div class="ios-toggle-item"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' +
+                    '<span style="color:' + s.color + ';font-size:' + s.fontSize + 'px">' + (p.title || '') + '</span>' +
+                    '<div class="ios-toggle ' + (p.isOn ? 'on' : '') + '" style="background:' + (p.isOn ? (s.onColor || '#34c759') : (s.offColor || '#d2d2d7')) + '"></div></div>';
+
+            case 'card':
+                return '<div class="ios-card"' + inspectAttr + ' style="background:' + s.bg + ';margin:' + s.my + 'px ' + s.mx + 'px;border-radius:' + s.radius + 'px;">' +
+                    (p.showImg ? '<div class="ios-card-image" style="height:' + s.imgH + 'px;background:' + s.imgBg + ';color:' + s.imgColor + '"><i class="fas ' + p.imgIcon + '"></i></div>' : '') +
+                    '<div class="ios-card-body" style="padding:' + s.py + 'px ' + s.px + 'px"><div class="ios-card-title" style="color:' + s.titleColor + ';font-size:' + s.titleSize + 'px;font-weight:' + (s.titleWeight || 600) + '">' + (p.title || '') + '</div>' +
+                    '<div class="ios-card-desc" style="color:' + s.descColor + ';font-size:' + s.descSize + 'px">' + (p.desc || '') + '</div></div></div>';
+
+            case 'button':
+                return '<div class="ios-button"' + inspectAttr + ' style="margin:' + s.my + 'px ' + s.mx + 'px;">' +
+                    '<button style="background:' + s.bg + ';color:' + s.color + ';font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + ';height:' + s.h + 'px;border-radius:' + s.radius + 'px">' + (p.text || '按钮') + '</button></div>';
+
+            case 'avatar-block':
+                var abAvatarRadius = s.avatarRadius !== undefined ? s.avatarRadius : Math.round(s.avatarSize / 2);
+                return '<div class="ios-avatar-block"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' +
+                    '<div class="ios-avatar" style="width:' + s.avatarSize + 'px;height:' + s.avatarSize + 'px;font-size:' + (s.avatarSize * 0.4) + 'px;background:' + s.avatarBg + ';color:' + s.avatarColor + ';border-radius:' + abAvatarRadius + 'px"><i class="fas ' + p.icon + '"></i></div>' +
+                    '<div class="ios-avatar-name" style="color:' + s.nameColor + ';font-size:' + s.nameSize + 'px;font-weight:' + (s.nameWeight || 600) + '">' + (p.name || '') + '</div>' +
+                    '<div class="ios-avatar-subtitle" style="color:' + s.subColor + ';font-size:' + s.subSize + 'px">' + (p.subtitle || '') + '</div></div>';
+
+            case 'text-block':
+                return '<div class="ios-text-block"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' +
+                    '<p style="color:' + s.color + ';font-size:' + s.fontSize + 'px;font-weight:' + (s.fontWeight || 400) + ';line-height:' + s.lineHeight + '">' + (p.text || '') + '</p></div>';
+
+            case 'image-block':
+                return '<div class="ios-image-block"' + inspectAttr + ' style="background:' + s.bg + ';height:' + s.h + 'px;margin:' + (s.my || 0) + 'px ' + (s.mx || 0) + 'px;border-radius:' + s.radius + 'px;display:flex;align-items:center;justify-content:center;color:' + s.color + '">' +
+                    '<i class="fas ' + p.icon + '" style="font-size:32px"></i></div>';
+
+            case 'divider':
+                return '<div class="ios-divider"' + inspectAttr + ' style="background:' + s.bg + ';height:' + s.h + 'px;"></div>';
+
+            case 'spacer':
+                return '<div class="ios-spacer"' + inspectAttr + ' style="height:' + s.h + 'px;"></div>';
+
+            case 'tabbar':
+                var tabItems = (p.items || []).map(function(item) {
+                    return '<div class="ios-tabbar-item ' + (item.active ? 'active' : '') + '">' +
+                        '<i class="fas ' + item.icon + '"></i>' +
+                        (item.label ? '<span>' + item.label + '</span>' : '') + '</div>';
+                }).join('');
+                return '<div class="ios-tabbar"' + inspectAttr + '>' + tabItems + '</div>';
+
+            case 'notice-bar':
+                return '<div class="ios-notice-bar"' + inspectAttr + ' style="background:' + s.bg + ';color:' + s.color + ';padding:' + s.py + 'px ' + s.px + 'px;font-size:' + s.fontSize + 'px;">' +
+                    (p.icon ? '<i class="fas ' + p.icon + '" style="color:' + s.iconColor + ';margin-right:8px"></i>' : '') +
+                    '<span>' + (p.text || '') + '</span></div>';
+
+            case 'steps':
+                var stepsHtml = (p.items || []).map(function(item, i) {
+                    var isActive = i < p.current;
+                    var isCurrent = i === p.current - 1;
+                    return '<div class="ios-step ' + (isActive ? 'active' : '') + ' ' + (isCurrent ? 'current' : '') + '">' +
+                        '<div class="ios-step-num" style="background:' + (isActive ? s.activeColor : s.inactiveColor) + '">' + (i + 1) + '</div>' +
+                        '<div class="ios-step-title" style="color:' + (isActive ? s.activeColor : s.inactiveColor) + '">' + item + '</div></div>';
+                }).join('');
+                return '<div class="ios-steps"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' + stepsHtml + '</div>';
+
+            case 'input-field':
+                return '<div class="ios-input-field"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' +
+                    (p.label ? '<label style="color:' + s.labelColor + '">' + p.label + '</label>' : '') +
+                    '<input type="' + (p.type || 'text') + '" placeholder="' + (p.placeholder || '') + '" style="background:' + s.inputBg + ';color:' + s.inputColor + ';font-size:' + s.fontSize + 'px;border-radius:' + s.radius + 'px;height:' + s.h + 'px"></div>';
+
+            case 'option-item':
+                return '<div class="ios-option-item"' + inspectAttr + ' style="background:' + s.bg + ';padding:12px 16px;">' +
+                    '<div class="ios-option-check" style="background:' + (p.checked ? s.checkedBg : s.iconBg) + ';color:' + (p.checked ? '#fff' : s.uncheckedColor) + '">' +
+                    (p.checked ? '<i class="fas fa-check"></i>' : '') + '</div>' +
+                    '<div class="ios-option-content"><span style="color:' + s.color + ';font-size:' + s.fontSize + 'px">' + (p.text || '') + '</span>' +
+                    (p.desc ? '<span style="color:' + s.descColor + ';font-size:' + s.descSize + 'px">' + p.desc + '</span>' : '') + '</div></div>';
+
+            case 'bottom-button':
+                return '<div class="ios-bottom-button"' + inspectAttr + ' style="background:' + s.bg + ';padding:12px 16px;display:flex;gap:12px;">' +
+                    (p.showLeft ? '<button style="flex:1;background:' + s.leftBg + ';color:' + s.leftColor + ';border:1px solid ' + s.leftBorderColor + ';height:' + s.h + 'px;border-radius:' + s.radius + 'px;font-size:' + s.fontSize + 'px">' + (p.leftText || '') + '</button>' : '') +
+                    '<button style="flex:2;background:' + s.rightBg + ';color:' + s.rightColor + ';border:none;height:' + s.h + 'px;border-radius:' + s.radius + 'px;font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + '">' + (p.rightText || '') + '</button></div>';
+
+            default:
+                return '';
+        }
+    }
+
     function buildExportHTML(exportType) {
-        // 克隆画布内容
-        var phoneScreen = document.querySelector('.phone-screen').cloneNode(true);
-
-        // 移除编辑器元素
-        var removeSelectors = '.block-actions, .resize-handle, .align-guide, .distance-bubble, .empty-canvas';
-        phoneScreen.querySelectorAll(removeSelectors).forEach(function(el) { el.remove(); });
-
-        // 为标注版添加 data-inspect 属性
-        var blockIndex = 0;
-        phoneScreen.querySelectorAll('.block').forEach(function(el) {
-            el.classList.remove('selected', 'multi-selected', 'free-dragging');
-            el.removeAttribute('draggable');
-            if (exportType === 'inspect') {
-                el.setAttribute('data-inspect', 'block-' + blockIndex++);
-            } else {
-                el.removeAttribute('data-id');
-            }
-        });
-
-        // 清理样式
-        phoneScreen.removeAttribute('style');
-
         var bgColor = globalStyle.bgColor || '#F6F7F8';
 
-        // 分离 TabBar 和普通内容
-        var tabbarEl = phoneScreen.querySelector('.ios-tabbar');
+        // 复制 blocks 数组并按 y 坐标排序（保证导出顺序与视觉顺序一致）
+        var sortedBlocks = blocks.slice().sort(function(a, b) {
+            // navbar 始终在最前
+            if (a.type === 'navbar') return -1;
+            if (b.type === 'navbar') return 1;
+            // tabbar 始终在最后
+            if (a.type === 'tabbar') return 1;
+            if (b.type === 'tabbar') return -1;
+            // 其他按 y 坐标排序（从上到下）
+            var ay = a.style && a.style.y !== undefined ? a.style.y : 0;
+            var by = b.style && b.style.y !== undefined ? b.style.y : 0;
+            return ay - by;
+        });
+
+        // 调试：输出详细的 blocks 状态（每次导出前验证）
+        console.log('╔══════════════════════════════════════════════════════════╗');
+        console.log('║           导出调试信息 - 画布状态验证                    ║');
+        console.log('╠══════════════════════════════════════════════════════════╣');
+        console.log('║ blocks 数组长度:', blocks.length);
+        console.log('║ sortedBlocks 长度:', sortedBlocks.length);
+        console.log('╠══════════════════════════════════════════════════════════╣');
+        console.log('║ 组件详情（按Y坐标排序后）:');
+        sortedBlocks.forEach(function(b, i) {
+            var info = '║ [' + i + '] id=' + b.id + ' type=' + b.type +
+                       ' x=' + (b.style && b.style.x !== undefined ? b.style.x.toFixed(1) : 'N/A') + '%' +
+                       ' y=' + (b.style && b.style.y !== undefined ? b.style.y.toFixed(1) : 'N/A') + '%';
+            if (b.props && b.props.title) info += ' title="' + b.props.title + '"';
+            console.log(info);
+        });
+        console.log('╚══════════════════════════════════════════════════════════╝');
+
+        // 从排序后的 blocks 生成内容
+        var navbarHtml = '';
         var tabbarHtml = '';
-        if (tabbarEl) {
-            tabbarHtml = tabbarEl.outerHTML;
-            tabbarEl.remove();
+        var contentHtml = '';
+        var headerHeight = 44;
+        var blockIndex = 0;
+
+        for (var i = 0; i < sortedBlocks.length; i++) {
+            var block = sortedBlocks[i];
+            var html = renderExportBlock(block, exportType, blockIndex++);
+            if (html === '') {
+                console.warn('[导出警告] 组件 id=' + block.id + ' type=' + block.type + ' 返回空HTML');
+            }
+            if (block.type === 'navbar') {
+                navbarHtml = html;
+            } else if (block.type === 'tabbar') {
+                tabbarHtml = html;
+            } else {
+                contentHtml += html;
+            }
         }
+        console.log('[导出统计] navbar=' + (navbarHtml ? '有' : '无') +
+                    ' content组件=' + (sortedBlocks.length - (navbarHtml ? 1 : 0) - (tabbarHtml ? 1 : 0)) +
+                    ' tabbar=' + (tabbarHtml ? '有' : '无'));
 
-        // 获取 canvas-content 内容
-        var canvasContent = phoneScreen.querySelector('.canvas-content');
-        var contentHtml = canvasContent ? canvasContent.innerHTML : phoneScreen.innerHTML;
-
-        // 检查是否有 TabBar
+        var hasHeader = navbarHtml !== '';
         var hasTabbar = tabbarHtml !== '';
-        var contentBottom = hasTabbar ? '64px' : '0';
 
-        // 基础 CSS
+        // 基础 CSS - 干净的屏幕内容（无手机壳）
         var baseCSS = [
-            '/* Reset */html, body { margin: 0; padding: 0; }',
+            '/* Reset */',
+            'html, body { margin: 0; padding: 0; }',
             '* { box-sizing: border-box; }',
-            'body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }',
+            'body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; background: #f4f5f7; }',
             '',
-            '/* CSS Variables */:root { --bg: ' + bgColor + '; --bg-card: #fff; --text: #111; --muted: #999; --border: #e6e6e8; }',
+            '/* CSS Variables */',
+            ':root { --bg: ' + bgColor + '; --bg-card: #fff; --text: #111; --muted: #999; --border: #e6e6e8; }',
             '',
-            '/* 页面居中背景 */.export-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f4f5f7; }',
+            '/* 页面居中 */',
+            '.export-page { min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; background: #f4f5f7; padding: 24px 0; }',
             '',
-            '/* 固定宽高的手机屏幕容器 */.export-screen { width: 390px; height: 844px; margin: 24px auto; position: relative; overflow: hidden; background: var(--bg); border-radius: 28px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }',
+            '/* 屏幕容器 - 390px宽度，圆角，轻阴影 */',
+            '.phone-screen { position: relative; width: 390px; min-height: 844px; background: var(--bg); border-radius: 32px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }',
             '',
-            '/* 内容区域（只在这里滚动） */.export-content { position: absolute; left: 0; right: 0; top: 0; bottom: ' + contentBottom + '; overflow: auto; -webkit-overflow-scrolling: touch; }',
+            '/* 顶部导航栏 - 固定在顶部 */',
+            '.screen-header { position: sticky; top: 0; left: 0; right: 0; z-index: 50; background: var(--bg-card); border-radius: 32px 32px 0 0; }',
             '',
-            '/* TabBar 固定在屏幕底部 */.export-tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; background: var(--bg-card); border-top: 1px solid rgba(0,0,0,0.06); display: flex; align-items: center; padding: 8px 0 4px; }',
+            '/* 页面内容 */',
+            '.screen-content { min-height: calc(844px - ' + (hasHeader ? headerHeight : 0) + 'px - ' + (hasTabbar ? '64px' : '0px') + '); padding-bottom: ' + (hasTabbar ? '64px' : '20px') + '; }',
+            '',
+            '/* 底部 TabBar - 固定在底部 */',
+            '.screen-tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; z-index: 40; background: var(--bg-card); border-top: 1px solid rgba(0,0,0,0.06); display: flex; align-items: center; padding: 8px 0 4px; border-radius: 0 0 32px 32px; }',
             '',
             '/* 组件样式 */',
-            '.canvas-content { min-height: 100%; padding-bottom: 20px; }',
             '.block.free-position { position: absolute; }',
             '.ios-navbar { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); }',
             '.ios-navbar-left, .ios-navbar-right { width: 60px; display: flex; align-items: center; }',
@@ -6247,6 +6351,21 @@
             '.ios-tabbar-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; cursor: pointer; color: var(--muted); }',
             '.ios-tabbar-item.active { color: var(--text); }',
             '.ios-tabbar-item i { font-size: 24px; }',
+            '.ios-image-block { display: flex; align-items: center; justify-content: center; background: #f0f0f0; }',
+            '.ios-notice-bar { display: flex; align-items: center; }',
+            '.ios-steps { display: flex; justify-content: space-between; }',
+            '.ios-step { display: flex; flex-direction: column; align-items: center; flex: 1; }',
+            '.ios-step-num { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; margin-bottom: 4px; }',
+            '.ios-step-title { font-size: 11px; }',
+            '.ios-input-field { display: flex; flex-direction: column; gap: 8px; }',
+            '.ios-input-field label { font-size: 13px; font-weight: 500; }',
+            '.ios-input-field input { width: 100%; border: 1px solid var(--border); padding: 0 12px; }',
+            '.ios-option-item { display: flex; align-items: center; gap: 12px; }',
+            '.ios-option-check { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; }',
+            '.ios-option-content { display: flex; flex-direction: column; }',
+            '.ios-bottom-button button { cursor: pointer; }',
+            '.ios-list-accessory { color: var(--muted); font-size: 14px; margin-left: 8px; }',
+            '.ios-card-image { display: flex; align-items: center; justify-content: center; font-size: 32px; }',
             '.text-placeholder { color: var(--muted); font-style: italic; }'
         ].join('\n');
 
@@ -6435,13 +6554,13 @@
             '</' + 'script>'
         ].join('\n') : '';
 
-        // 构建完整 HTML 字符串
+        // 构建完整 HTML 字符串 - 干净结构（无手机壳）
         var html = [
             '<!DOCTYPE html>',
             '<html lang="zh-CN">',
             '<head>',
             '<meta charset="UTF-8">',
-            '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+            '<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">',
             '<title>' + exportState.pageName + (exportType === 'inspect' ? ' - Inspect' : '') + '</title>',
             '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">',
             '<style>',
@@ -6451,13 +6570,12 @@
             '</head>',
             '<body>',
             '<div class="export-page">',
-            '  <div class="export-screen">',
-            '    <div class="export-content">',
-            '      <div class="canvas-content">',
+            '  <div class="phone-screen">',
+            hasHeader ? '    <div class="screen-header">' + navbarHtml + '</div>' : '',
+            '    <div class="screen-content">',
             contentHtml,
-            '      </div>',
             '    </div>',
-            hasTabbar ? '    <div class="export-tabbar">' + tabbarHtml + '</div>' : '',
+            hasTabbar ? '    <div class="screen-tabbar">' + tabbarHtml + '</div>' : '',
             '  </div>',
             '</div>',
             inspectHTML,
@@ -6647,5 +6765,3 @@
 </script>
 </body>
 </html>
-
- 
