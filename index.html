@@ -2916,7 +2916,7 @@
         card: { props: { showImg: false, imgIcon: 'fa-image', title: '会员权益说明', desc: '开通会员后可享受专属折扣、优先客服等多项权益' }, style: { bg: '#ffffff', imgBg: '#F6F7F8', imgColor: '#999999', titleColor: '#111111', descColor: '#666666', borderColor: '#E6E6E8', titleSize: 16, titleWeight: 600, descSize: 14, descWeight: 400, imgH: 120, radius: 12, mx: 16, my: 12, px: 16, py: 16, x: 0, y: 0, w: 100, h: 'auto' } },
         button: { props: { text: '下一步' }, style: { bg: '#111111', color: '#ffffff', borderColor: 'transparent', fontSize: 16, fontWeight: 600, h: 44, radius: 10, mx: 16, my: 12, x: 0, y: 0, w: 100 } },
         'avatar-block': { props: { icon: 'fa-user', name: '张三', subtitle: 'zhangsan@example.com' }, style: { bg: '#ffffff', avatarBg: '#E6E6E8', avatarColor: '#999999', nameColor: '#111111', subColor: '#666666', avatarSize: 72, avatarRadius: 36, nameSize: 18, nameWeight: 600, subSize: 14, subWeight: 400, py: 24, px: 16, radius: 0, h: 'auto', x: 0, y: 0, w: 100 } },
-        'text-block': { props: { text: '请仔细阅读以下条款，确保您了解相关权益和使用须知。如有疑问，可随时联系客服。' }, style: { bg: '#ffffff', color: '#666666', fontSize: 14, fontWeight: 400, lineHeight: 1.6, py: 12, px: 16, radius: 0, h: 'auto', x: 0, y: 0, w: 100 } },
+        'text-block': { props: { text: '请仔细阅读以下条款，确保您了解相关权益和使用须知。如有疑问，可随时联系客服。' }, style: { bg: '#ffffff', color: '#666666', fontSize: 14, fontWeight: 400, lineHeight: 1.6, py: 0, px: 0, radius: 0, h: 'auto', x: 0, y: 0, w: 'auto' } },
         icon: { props: { icon: 'fa-circle-check' }, style: { color: '#111111', fontSize: 24, bg: 'transparent', x: 0, y: 0, w: 'auto', h: 'auto' } },
         'number-picker': { props: { label: '购买数量', value: 1, min: 1, max: 99, step: 1, unit: '件' }, style: { bg: '#ffffff', color: '#111111', valueColor: '#111111', highlightBg: 'rgba(0,0,0,0.02)', borderColor: '#E6E6E8', fontSize: 16, radius: 0, h: 120, x: 0, y: 0, w: 100 } },
         'option-item': { props: { text: '我已阅读并同意《用户协议》', desc: '', checked: false }, style: { bg: '#ffffff', color: '#111111', descColor: '#666666', checkedColor: '#111111', uncheckedColor: '#E6E6E8', checkedBg: '#111111', iconBg: 'transparent', fontSize: 16, descSize: 14, radius: 0, h: 'auto', x: 0, y: 0, w: 100 } },
@@ -4724,8 +4724,8 @@
                 var textContent = p.text || '';
                 var textPlaceholder = !textContent.trim() ? ' data-placeholder="双击输入文本内容"' : '';
                 var textDisplay = textContent.trim() ? p.text : '<span class="text-placeholder">双击输入文本内容</span>';
-                return '<div class="block ios-text-block ' + cls + '" data-id="' + block.id + '" draggable="' + (layoutMode === 'flow') + '" style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;' + tbRadius + tbHeight + posStyle + '">' + actions + resizeHandles +
-                    '<p style="color:' + s.color + ';font-size:' + s.fontSize + 'px;font-weight:' + tw + ';line-height:' + s.lineHeight + '"' + textPlaceholder + '>' + textDisplay + '</p></div>';
+                return '<div class="block ios-text-block ' + cls + '" data-id="' + block.id + '" draggable="' + (layoutMode === 'flow') + '" style="background:transparent;' + tbHeight + posStyle + '">' + actions + resizeHandles +
+                    '<p style="display:inline-block;margin:0;padding:0;background:' + s.bg + ';color:' + s.color + ';font-size:' + s.fontSize + 'px;font-weight:' + tw + ';line-height:' + s.lineHeight + ';white-space:pre-wrap;word-break:break-word;max-width:100%;' + tbRadius + '"' + textPlaceholder + '>' + textDisplay + '</p></div>';
 
             case 'icon':
                 // Icon uses only position, no width constraint
@@ -6346,8 +6346,10 @@
 
             case 'large-title':
                 var ltRadius = s.radius ? 'border-radius:' + s.radius + 'px;' : '';
-                return '<div class="ios-large-title"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;' + ltRadius + '">' +
-                    '<h1 style="color:' + s.color + ';font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + ';line-height:' + s.lineHeight + '">' + (p.title || '') + '</h1></div>';
+                var exportLineHeight = parseFloat(s.lineHeight);
+                if (!exportLineHeight || exportLineHeight < 1.25) exportLineHeight = 1.25;
+                return '<div class="ios-large-title"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;' + ltRadius + ';overflow:visible;">' +
+                    '<h1 style="margin:0;padding:0;display:block;white-space:pre-wrap;word-break:break-word;overflow:visible;color:' + s.color + ';font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + ';line-height:' + exportLineHeight + '">' + (p.title || '') + '</h1></div>';
 
             case 'search':
                 var searchRadius = s.radius ? 'border-radius:' + s.radius + 'px;' : '';
@@ -6591,6 +6593,8 @@
             '',
             '/* 页面内容 - 支持自由布局的绝对定位 */',
             '.screen-content { position: relative; width: 100%; height: 100%; }',
+            '.screen-content h1, .screen-content h2, .screen-content h3, .screen-content p, .screen-content span, .screen-content button { margin: 0; padding: 0; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }',
+            '.ios-large-title, .ios-section-header, .ios-text-block, .ios-list-title, .ios-card-title, .ios-avatar-name { overflow: visible; }',
             '',
             '/* 底部 TabBar - 固定在底部（流式布局时）*/',
             '.screen-tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; z-index: 40; background: var(--bg-card); border-top: 1px solid rgba(0,0,0,0.06); display: flex; align-items: center; padding: 8px 0 4px; border-radius: 0 0 32px 32px; }',
@@ -6603,8 +6607,8 @@
             '.ios-navbar-right { display: flex; align-items: center; justify-content: flex-end; white-space: nowrap; flex: 0 0 auto; min-width: 60px; }',
             '.ios-navbar-title { flex: 1; text-align: center; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
             '.ios-navbar-btn { background: none; border: none; font-size: 17px; cursor: pointer; }',
-            '.ios-large-title { padding: 8px 16px 16px; }',
-            '.ios-large-title h1 { font-size: 34px; font-weight: 700; }',
+            '.ios-large-title { padding: 8px 16px 16px; overflow: visible; }',
+            '.ios-large-title h1 { margin: 0; padding: 0; display: block; white-space: pre-wrap; word-break: break-word; line-height: 1.35; font-size: 34px; font-weight: 700; }',
             '.ios-section-header { padding: 24px 16px 8px; }',
             '.ios-section-header h2 { font-size: 22px; font-weight: 700; color: var(--text); }',
             '.ios-search { padding: 8px 16px; }',
