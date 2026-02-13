@@ -780,6 +780,18 @@
         }
         .property-input:focus { outline: none; border-color: #999999; }
         .property-textarea { resize: vertical; min-height: 72px; }
+        .property-action-btn {
+            width: 100%;
+            height: 36px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .property-action-btn:hover { border-color: #999999; }
 
         .slider-row { display: flex; align-items: center; gap: 10px; }
         .property-slider {
@@ -1290,26 +1302,28 @@
         .modal-box {
             background: #fff;
             border-radius: 14px;
-            width: 270px;
+            width: min(86vw, 270px);
             text-align: center;
+            overflow: hidden;
             transform: scale(0.9);
             transition: transform 0.3s;
         }
         .modal-overlay.show .modal-box { transform: scale(1); }
-        .modal-header { padding: 20px 16px 8px; }
-        .modal-title { font-size: 17px; font-weight: 600; }
-        .modal-body { padding: 0 16px 20px; font-size: 13px; color: var(--text-secondary); }
-        .modal-actions { border-top: 0.5px solid var(--border-color); display: flex; }
+        .modal-header { padding: 18px 16px 8px; }
+        .modal-title { font-size: 17px; font-weight: 600; line-height: 1.25; }
+        .modal-body { padding: 0 16px 18px; font-size: 13px; color: #6f6f73; line-height: 1.45; }
+        .modal-actions { border-top: 1px solid #d9d9dc; display: flex; }
         .modal-btn {
             flex: 1;
-            padding: 12px;
+            height: 44px;
             border: none;
-            background: none;
+            background: #fff;
             font-size: 17px;
+            font-weight: 400;
             color: #333333;
             cursor: pointer;
         }
-        .modal-btn:first-child { border-right: 0.5px solid var(--border-color); }
+        .modal-btn:first-child { border-right: 1px solid #d9d9dc; }
         .modal-btn.primary { font-weight: 600; }
         .modal-btn.danger { color: var(--danger-color); }
 
@@ -2252,6 +2266,8 @@
             <div class="component-item" data-type="progress-bar" data-tip="点击选中后在右侧调整进度"><i class="fas fa-tasks"></i><span>进度条</span></div>
             <div class="component-item" data-type="rating" data-tip="点击星星可更改评分"><i class="fas fa-star"></i><span>评分</span></div>
             <div class="component-item" data-type="notice-bar" data-tip="双击编辑文字"><i class="fas fa-bullhorn"></i><span>通知栏</span></div>
+            <div class="component-item" data-type="modal" data-tip="贴上画布后可在右侧预览弹窗"><i class="fas fa-window-restore"></i><span>弹窗</span></div>
+            <div class="component-item" data-type="toast" data-tip="贴上画布后可在右侧预览提示"><i class="fas fa-comment-dots"></i><span>Toast</span></div>
         </div>
 
         <h3 class="toolbar-title">布局与辅助</h3>
@@ -2260,17 +2276,6 @@
             <div class="component-item" data-type="spacer" data-tip="快速拉开上下间距"><i class="fas fa-arrows-alt-v"></i><span>留白</span></div>
         </div>
 
-        <h3 class="toolbar-title">交互预览</h3>
-        <div class="component-grid">
-            <div class="component-item" id="showModalBtn" data-tip="预览弹窗效果"><i class="fas fa-window-restore"></i><span>弹窗预览</span></div>
-            <div class="component-item" id="showToastBtn" data-tip="预览轻提示效果"><i class="fas fa-comment-dots"></i><span>Toast 预览</span></div>
-        </div>
-
-            <h3 class="toolbar-title">交互配置</h3>
-            <div class="component-grid">
-                <div class="component-item" id="editModalBtn" data-tip="自定义弹窗内容"><i class="fas fa-edit"></i><span>弹窗配置</span></div>
-                <div class="component-item" id="editToastBtn" data-tip="自定义提示内容"><i class="fas fa-pen"></i><span>Toast 配置</span></div>
-            </div>
             </div><!-- end freeDesignSection -->
         </div><!-- end toolbar-scrollable -->
     </aside>
@@ -2711,6 +2716,7 @@
     var toastSettings = { text: '操作成功', duration: 2 };
     var layoutMode = 'free'; // 'flow' or 'free'
     var phoneScale = 100; // Phone scale percentage
+    var selectedTabItemIndexByBlock = {};
 
     // Free drag state
     var isDragging = false;
@@ -2925,6 +2931,8 @@
         'input-field': { props: { label: '手机号', placeholder: '请输入您的手机号', type: 'text' }, style: { bg: '#ffffff', labelColor: '#111111', inputBg: '#ffffff', inputColor: '#111111', placeholderColor: '#999999', borderColor: '#E6E6E8', fontSize: 16, radius: 12, py: 12, px: 16, h: 40, x: 0, y: 0, w: 100 } },
         'notice-bar': { props: { text: '系统将于今晚 22:00 进行维护升级，届时部分功能暂不可用', icon: 'fa-circle-info', closable: true }, style: { bg: '#F6F7F8', color: '#666666', iconColor: '#666666', fontSize: 14, py: 10, px: 16, radius: 0, h: 'auto', x: 0, y: 0, w: 100 } },
         steps: { props: { current: 1, items: ['提交申请', '审核中', '处理完成'] }, style: { bg: '#ffffff', activeColor: '#111111', inactiveColor: '#999999', lineColor: '#E6E6E8', fontSize: 12, py: 16, px: 16, radius: 0, h: 'auto', x: 0, y: 0, w: 100 } },
+        modal: { props: { title: '提示', body: '弹窗内容', cancel: '取消', confirm: '确定' }, style: { bg: '#ffffff', titleColor: '#111111', bodyColor: '#6f6f73', borderColor: '#D9D9DC', fontSize: 14, radius: 24, py: 0, px: 0, h: 'auto', x: 0, y: 0, w: 100 } },
+        toast: { props: { text: '操作成功', duration: 2 }, style: { bg: '#111111', color: '#ffffff', fontSize: 13, radius: 20, py: 10, px: 16, h: 'auto', x: 0, y: 0, w: 'auto' } },
         'bottom-button': { props: { leftText: '取消', leftIcon: '', rightText: '确认提交', showLeft: true }, style: { bg: '#ffffff', leftBg: '#ffffff', leftColor: '#111111', leftBorderColor: '#E6E6E8', rightBg: '#111111', rightColor: '#ffffff', fontSize: 16, fontWeight: 600, h: 44, radius: 10, x: 0, y: 0, w: 100 } }
     };
 
@@ -3835,13 +3843,6 @@
             render();
         };
 
-        // Modal/Toast preview
-        document.getElementById('showModalBtn').onclick = function() { showModal(); };
-        document.getElementById('showToastBtn').onclick = function() { showToast(); };
-
-        // Modal/Toast edit
-        document.getElementById('editModalBtn').onclick = function() { openEditorModal('modalEditor'); };
-        document.getElementById('editToastBtn').onclick = function() { openEditorModal('toastEditor'); };
 
         // Template category switching
         var categoryItems = document.querySelectorAll('.template-category-item');
@@ -4852,6 +4853,25 @@
                     (p.showLeft ? '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:' + s.leftBg + ';color:' + s.leftColor + ';font-size:' + s.fontSize + 'px;"><i class="fas ' + p.leftIcon + '"></i>' + p.leftText + '</div>' : '') +
                     '<div style="flex:2;display:flex;align-items:center;justify-content:center;background:' + s.rightBg + ';color:' + s.rightColor + ';font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + ';">' + p.rightText + '</div></div>';
 
+            case 'modal':
+                var modalRadius = s.radius ? 'border-radius:' + s.radius + 'px;' : '';
+                var modalHeight = s.h && s.h !== 'auto' ? 'height:' + s.h + 'px;' : '';
+                return '<div class="block ios-modal-preview ' + cls + '" data-id="' + block.id + '" draggable="' + (layoutMode === 'flow') + '" style="background:' + s.bg + ';border:1px solid ' + s.borderColor + ';overflow:hidden;' + modalRadius + modalHeight + posStyle + '">' + actions + resizeHandles +
+                    '<div style="padding:18px 16px 8px;text-align:center;">' +
+                    '<div style="font-size:' + (s.fontSize + 3) + 'px;color:' + s.titleColor + ';font-weight:600;line-height:1.25;">' + (p.title || '提示') + '</div>' +
+                    '<div style="font-size:' + s.fontSize + 'px;color:' + s.bodyColor + ';line-height:1.45;margin-top:8px;margin-bottom:2px;">' + (p.body || '') + '</div>' +
+                    '</div>' +
+                    '<div style="display:flex;border-top:1px solid ' + s.borderColor + ';">' +
+                    '<button style="flex:1;height:44px;border:none;border-right:1px solid ' + s.borderColor + ';background:#fff;color:#3c3c43;font-size:' + (s.fontSize + 3) + 'px;font-weight:400;">' + (p.cancel || '取消') + '</button>' +
+                    '<button style="flex:1;height:44px;border:none;background:#fff;color:#3c3c43;font-size:' + (s.fontSize + 3) + 'px;font-weight:600;">' + (p.confirm || '确定') + '</button>' +
+                    '</div></div>';
+
+            case 'toast':
+                var toastRadius = s.radius ? 'border-radius:' + s.radius + 'px;' : '';
+                var toastWidthStyle = (s.w === 'auto' || s.w === undefined) ? 'display:inline-flex;' : 'width:' + s.w + '%;display:flex;';
+                return '<div class="block ios-toast-preview ' + cls + '" data-id="' + block.id + '" draggable="' + (layoutMode === 'flow') + '" style="background:' + s.bg + ';color:' + s.color + ';font-size:' + s.fontSize + 'px;padding:' + s.py + 'px ' + s.px + 'px;' + toastRadius + toastWidthStyle + 'align-items:center;justify-content:center;' + posStyle + '">' + actions + resizeHandles +
+                    '<span>' + (p.text || '操作成功') + '</span></div>';
+
             default: return '';
         }
     }
@@ -5004,10 +5024,11 @@
                     var idx = parseInt(item.getAttribute('data-tab-idx'));
                     var block = findBlock(id);
                     if (block) {
+                        selectedTabItemIndexByBlock[id] = idx;
                         for (var j = 0; j < block.props.items.length; j++) {
                             block.props.items[j].active = j === idx;
                         }
-                        render();
+                        selectBlock(id, false);
                     }
                 };
             })(tabItems[i]);
@@ -5284,6 +5305,21 @@
         }
     }
 
+    function getSelectedTabItemIndex(block) {
+        if (!block || block.type !== 'tabbar' || !block.props || !Array.isArray(block.props.items)) return 0;
+        if (block.props.items.length === 0) return 0;
+        var stored = selectedTabItemIndexByBlock[block.id];
+        if (typeof stored === 'number' && stored >= 0 && stored < block.props.items.length) return stored;
+        for (var i = 0; i < block.props.items.length; i++) {
+            if (block.props.items[i] && block.props.items[i].active) {
+                selectedTabItemIndexByBlock[block.id] = i;
+                return i;
+            }
+        }
+        selectedTabItemIndexByBlock[block.id] = 0;
+        return 0;
+    }
+
     function genPropsEditor(block) {
         var p = block.props;
         var html = '<div class="panel-section"><h3 class="panel-section-title">' + getTypeName(block.type) + '</h3>';
@@ -5339,6 +5375,29 @@
                 html += inp('描述文字', 'desc', p.desc, block.id);
                 html += chk('选中状态', 'checked', p.checked, block.id);
                 break;
+            case 'tabbar':
+                if (!Array.isArray(p.items) || p.items.length === 0) {
+                    p.items = [{ icon: 'fa-house', label: '首页', active: true }];
+                }
+                var tIdx = getSelectedTabItemIndex(block);
+                var tItem = p.items[tIdx] || p.items[0];
+                html += '<div class="property-row"><label class="property-label">图标大小</label><input type="number" class="property-input" data-style="iconSize" data-id="' + block.id + '" value="' + (block.style.iconSize || 24) + '" min="12" max="56"></div>';
+                html += '<div class="property-row"><label class="property-label">文字大小</label><input type="number" class="property-input" data-style="labelSize" data-id="' + block.id + '" value="' + (block.style.labelSize || 10) + '" min="8" max="24"></div>';
+                html += '<div class="property-row"><label class="property-label">当前编辑子项</label><div class="segment-control">';
+                for (var ti = 0; ti < p.items.length; ti++) {
+                    var segText = p.items[ti].label || ('子项' + (ti + 1));
+                    html += '<div class="segment-option ' + (ti === tIdx ? 'active' : '') + '" data-tab-action="focus" data-id="' + block.id + '" data-tab-idx="' + ti + '">' + segText + '</div>';
+                }
+                html += '</div></div>';
+                html += '<div class="property-row"><label class="property-label">文字</label><input type="text" class="property-input" data-tab-prop="label" data-id="' + block.id + '" data-tab-idx="' + tIdx + '" value="' + (tItem.label || '') + '"></div>';
+                html += tabIconPicker('图标', (tItem.icon || 'fa-circle'), block.id, tIdx);
+                html += '<div class="property-row"><label class="property-label">子项颜色（留空跟随默认）</label><div class="color-row"><input type="color" class="color-picker" data-tab-prop="color" data-id="' + block.id + '" data-tab-idx="' + tIdx + '" value="' + (tItem.color || '#111111') + '"><input type="text" class="property-input" data-tab-prop-hex="color" data-id="' + block.id + '" data-tab-idx="' + tIdx + '" value="' + (tItem.color || '') + '" placeholder="留空使用默认"></div></div>';
+                html += '<div class="property-row"><div class="tab-item-actions">';
+                html += '<button type="button" class="tab-item-mini-btn ' + (tItem.active ? 'active' : '') + '" data-tab-action="active" data-id="' + block.id + '" data-tab-idx="' + tIdx + '">设为激活</button>';
+                html += '<button type="button" class="tab-item-mini-btn" data-tab-action="add" data-id="' + block.id + '" data-tab-idx="' + tIdx + '">新增子项</button>';
+                html += '<button type="button" class="tab-item-mini-btn" data-tab-action="remove" data-id="' + block.id + '" data-tab-idx="' + tIdx + '">删除当前</button>';
+                html += '</div></div>';
+                break;
             case 'image-block':
                 html += iconPicker('占位图标', 'icon', p.icon, block.id);
                 html += '<div class="property-row"><label class="property-label">宽高比</label><select class="property-input" data-prop="aspectRatio" data-id="' + block.id + '">' +
@@ -5392,13 +5451,25 @@
                 html += inp('右侧文字', 'rightText', p.rightText, block.id);
                 html += chk('显示左侧', 'showLeft', p.showLeft, block.id);
                 break;
+            case 'modal':
+                html += inp('标题', 'title', p.title, block.id);
+                html += txt('内容', 'body', p.body, block.id);
+                html += inp('取消按钮文案', 'cancel', p.cancel, block.id);
+                html += inp('确定按钮文案', 'confirm', p.confirm, block.id);
+                html += '<div class="property-row"><button type="button" class="property-action-btn" data-action="preview-modal" data-id="' + block.id + '">预览弹窗</button></div>';
+                break;
+            case 'toast':
+                html += inp('提示文案', 'text', p.text, block.id);
+                html += '<div class="property-row"><label class="property-label">显示时长（秒）</label><input type="number" class="property-input" data-prop="duration" data-id="' + block.id + '" value="' + p.duration + '" min="1" max="10"></div>';
+                html += '<div class="property-row"><button type="button" class="property-action-btn" data-action="preview-toast" data-id="' + block.id + '">预览 Toast</button></div>';
+                break;
         }
         return html + '</div>';
     }
 
     // Determine if a component has a shape (rectangle/square)
     function isShapedComponent(type) {
-        var shapedTypes = ['navbar', 'large-title', 'search', 'section-header', 'list-item', 'toggle-item', 'card', 'button', 'avatar-block', 'text-block', 'number-picker', 'option-item', 'divider', 'image-block', 'progress-bar', 'input-field', 'notice-bar', 'steps', 'bottom-button'];
+        var shapedTypes = ['navbar', 'large-title', 'search', 'section-header', 'list-item', 'toggle-item', 'card', 'button', 'avatar-block', 'text-block', 'number-picker', 'option-item', 'divider', 'image-block', 'progress-bar', 'input-field', 'notice-bar', 'steps', 'bottom-button', 'modal', 'toast'];
         return shapedTypes.indexOf(type) >= 0;
     }
 
@@ -5524,6 +5595,18 @@
         });
         return html + '</div></div>';
     }
+    function tabIconPicker(label, val, id, idx) {
+        var html = '<div class="property-row"><label class="property-label">' + label + '</label><div class="icon-grid-container">';
+        Object.keys(iconCategories).forEach(function(cat) {
+            html += '<div class="icon-category-label">' + cat + '</div><div class="icon-grid">';
+            html += iconCategories[cat].map(function(icon) {
+                var iconName = iconNames[icon] || '';
+                return '<div class="icon-option ' + (val === icon ? 'selected' : '') + '" data-tab-icon="' + icon + '" data-id="' + id + '" data-tab-idx="' + idx + '" data-name="' + iconName + '"><i class="fas ' + icon + '"></i></div>';
+            }).join('');
+            html += '</div>';
+        });
+        return html + '</div></div>';
+    }
     function slider(label, prop, val, min, max, unit, id, step) {
         step = step || 1;
         return '<div class="property-row"><label class="property-label">' + label + '</label><div class="slider-row"><input type="range" class="property-slider" data-style="' + prop + '" data-id="' + id + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + val + '"><span class="slider-value">' + val + unit + '</span></div></div>';
@@ -5568,6 +5651,98 @@
                     el.oninput = function() { block.props[el.getAttribute('data-prop')] = el.value; render(); };
                 }
             })(propInputs[i]);
+        }
+
+        if (block.type === 'tabbar') {
+            var tabPropInputs = document.querySelectorAll('[data-tab-prop][data-id="' + block.id + '"]');
+            for (var i = 0; i < tabPropInputs.length; i++) {
+                (function(el) {
+                    el.oninput = function() {
+                        var idx = parseInt(el.getAttribute('data-tab-idx'));
+                        var prop = el.getAttribute('data-tab-prop');
+                        if (!block.props.items[idx]) return;
+                        block.props.items[idx][prop] = el.value;
+                        selectedTabItemIndexByBlock[block.id] = idx;
+                        render();
+                    };
+                })(tabPropInputs[i]);
+            }
+
+            var tabIconOptions = document.querySelectorAll('[data-tab-icon][data-id="' + block.id + '"]');
+            for (var i = 0; i < tabIconOptions.length; i++) {
+                (function(el) {
+                    el.onclick = function() {
+                        var idx = parseInt(el.getAttribute('data-tab-idx'));
+                        var icon = el.getAttribute('data-tab-icon');
+                        if (!block.props.items[idx]) return;
+                        block.props.items[idx].icon = icon;
+                        selectedTabItemIndexByBlock[block.id] = idx;
+                        render();
+                        updateEditors();
+                    };
+                })(tabIconOptions[i]);
+            }
+
+            var tabActions = document.querySelectorAll('[data-tab-action][data-id="' + block.id + '"]');
+            for (var i = 0; i < tabActions.length; i++) {
+                (function(el) {
+                    el.onclick = function(e) {
+                        e.preventDefault();
+                        var action = el.getAttribute('data-tab-action');
+                        var idx = parseInt(el.getAttribute('data-tab-idx'));
+
+                        if (action === 'focus') {
+                            selectedTabItemIndexByBlock[block.id] = idx;
+                            updateEditors();
+                            return;
+                        }
+                        if (action === 'add') {
+                            var insertAt = isNaN(idx) ? block.props.items.length : (idx + 1);
+                            block.props.items.splice(insertAt, 0, { icon: 'fa-circle', label: '新子项', active: false });
+                            selectedTabItemIndexByBlock[block.id] = insertAt;
+                        } else if (action === 'remove') {
+                            if (block.props.items.length <= 1) return;
+                            var removeAt = isNaN(idx) ? getSelectedTabItemIndex(block) : idx;
+                            var removedActive = block.props.items[removeAt] && block.props.items[removeAt].active;
+                            block.props.items.splice(removeAt, 1);
+                            var nextIdx = Math.max(0, Math.min(removeAt, block.props.items.length - 1));
+                            selectedTabItemIndexByBlock[block.id] = nextIdx;
+                            if (removedActive) {
+                                for (var j = 0; j < block.props.items.length; j++) block.props.items[j].active = false;
+                                block.props.items[nextIdx].active = true;
+                            }
+                        } else if (action === 'active') {
+                            for (var j = 0; j < block.props.items.length; j++) block.props.items[j].active = j === idx;
+                            selectedTabItemIndexByBlock[block.id] = idx;
+                        }
+                        render();
+                        updateEditors();
+                    };
+                })(tabActions[i]);
+            }
+        }
+
+        var propActionBtns = document.querySelectorAll('#propsEditor [data-action][data-id="' + block.id + '"]');
+        for (var i = 0; i < propActionBtns.length; i++) {
+            (function(el) {
+                el.onclick = function(e) {
+                    e.preventDefault();
+                    var action = el.getAttribute('data-action');
+                    if (action === 'preview-modal') {
+                        showModal({
+                            title: block.props.title || '提示',
+                            body: block.props.body || '',
+                            cancel: block.props.cancel || '取消',
+                            confirm: block.props.confirm || '确定'
+                        });
+                    } else if (action === 'preview-toast') {
+                        showToast({
+                            text: block.props.text || '操作成功',
+                            duration: parseFloat(block.props.duration) || 2
+                        });
+                    }
+                };
+            })(propActionBtns[i]);
         }
 
         var styleInputs = document.querySelectorAll('[data-style][data-id="' + block.id + '"]');
@@ -5629,6 +5804,30 @@
             })(propHexInputs[i]);
         }
 
+        var tabHexInputs = document.querySelectorAll('[data-tab-prop-hex][data-id="' + block.id + '"]');
+        for (var i = 0; i < tabHexInputs.length; i++) {
+            (function(el) {
+                el.oninput = function() {
+                    var idx = parseInt(el.getAttribute('data-tab-idx'));
+                    var val = el.value.trim();
+                    if (!block.props.items || !block.props.items[idx]) return;
+                    if (val === '') {
+                        delete block.props.items[idx].color;
+                        render();
+                        return;
+                    }
+                    if (/^#[0-9A-Fa-f]{6}$/.test(val) || /^#[0-9A-Fa-f]{3}$/.test(val)) {
+                        block.props.items[idx].color = val;
+                        var colorPicker = el.previousElementSibling;
+                        if (colorPicker && colorPicker.type === 'color') {
+                            colorPicker.value = val.length === 4 ? '#' + val[1]+val[1]+val[2]+val[2]+val[3]+val[3] : val;
+                        }
+                        render();
+                    }
+                };
+            })(tabHexInputs[i]);
+        }
+
         // Color hex input for styles
         var styleHexInputs = document.querySelectorAll('[data-style-hex][data-id="' + block.id + '"]');
         for (var i = 0; i < styleHexInputs.length; i++) {
@@ -5658,16 +5857,17 @@
     };
 
     function getTypeName(type) {
-        var names = { navbar: '顶部导航', 'large-title': '页面标题', search: '搜索', 'section-header': '小标题', 'list-item': '列表', 'toggle-item': '开关', card: '信息卡片', button: '按钮', 'avatar-block': '头像', 'text-block': '正文文本', icon: '图标', 'number-picker': '数字选择', 'option-item': '单选 / 多选', divider: '分割线', spacer: '留白', tabbar: '底部导航', 'image-block': '图片', badge: '徽章', 'progress-bar': '进度条', rating: '评分', tag: '标签', 'input-field': '输入框', 'notice-bar': '通知栏', steps: '步骤条', 'bottom-button': '底部按钮' };
+        var names = { navbar: '顶部导航', 'large-title': '页面标题', search: '搜索', 'section-header': '小标题', 'list-item': '列表', 'toggle-item': '开关', card: '信息卡片', button: '按钮', 'avatar-block': '头像', 'text-block': '正文文本', icon: '图标', 'number-picker': '数字选择', 'option-item': '单选 / 多选', divider: '分割线', spacer: '留白', tabbar: '底部导航', 'image-block': '图片', badge: '徽章', 'progress-bar': '进度条', rating: '评分', tag: '标签', 'input-field': '输入框', 'notice-bar': '通知栏', steps: '步骤条', modal: '弹窗', toast: 'Toast', 'bottom-button': '底部按钮' };
         return names[type] || type;
     }
 
     // Modal
-    function showModal() {
-        document.getElementById('modalTitle').textContent = modalSettings.title;
-        document.getElementById('modalBody').textContent = modalSettings.body;
-        document.getElementById('modalCancelBtn').textContent = modalSettings.cancel;
-        document.getElementById('modalConfirmBtn').textContent = modalSettings.confirm;
+    function showModal(config) {
+        var cfg = config || modalSettings;
+        document.getElementById('modalTitle').textContent = cfg.title || '提示';
+        document.getElementById('modalBody').textContent = cfg.body || '';
+        document.getElementById('modalCancelBtn').textContent = cfg.cancel || '取消';
+        document.getElementById('modalConfirmBtn').textContent = cfg.confirm || '确定';
         document.getElementById('iosModal').classList.add('show');
     }
     function hideModal() {
@@ -5675,11 +5875,14 @@
     }
 
     // Toast
-    function showToast() {
+    function showToast(config) {
+        var cfg = config || toastSettings;
         var toast = document.getElementById('toast');
-        toast.textContent = toastSettings.text;
+        toast.textContent = cfg.text || '操作成功';
         toast.classList.add('show');
-        setTimeout(function() { toast.classList.remove('show'); }, toastSettings.duration * 1000);
+        var duration = parseFloat(cfg.duration);
+        if (!duration || duration < 0.2) duration = 2;
+        setTimeout(function() { toast.classList.remove('show'); }, duration * 1000);
     }
 
     // Editor modals
