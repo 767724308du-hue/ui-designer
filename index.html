@@ -1158,7 +1158,10 @@
             background-color: rgba(0,0,0,0.02);
         }
 
-        .ios-tabbar { display: flex; padding: 8px 0 4px; position: absolute; bottom: 34px; left: 0; right: 0; background: #fff; }
+        /* Tabbar - 默认流式布局在底部，自由布局可拖拽 */
+        .ios-tabbar { display: flex; padding: 8px 0 4px; background: #fff; }
+        .ios-tabbar:not(.free-position) { position: absolute; bottom: 34px; left: 0; right: 0; }
+        .ios-tabbar.free-position { bottom: auto; } /* 允许 top 生效 */
         .ios-tabbar-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; cursor: pointer; color: var(--text-tertiary); }
         .ios-tabbar-item.active { color: #111111; }
         .ios-tabbar-item i { font-size: 24px; }
@@ -2726,7 +2729,7 @@
         var block = findBlock(blockId);
         var el = document.querySelector('.block[data-id="' + blockId + '"]');
         if (!block || !el) return false;
-        if (block.type === 'tabbar') return false;
+        // 允许 tabbar 也可以自由拖拽（不再限制）
 
         // 记录起始状态，等待超过阈值后才真正开始拖拽
         isDragPending = true;
@@ -3436,12 +3439,16 @@
             var el = blockEls[j];
             var blockId = parseInt(el.getAttribute('data-id'));
             var block = findBlock(blockId);
-            if (block && block.type !== 'tabbar') {
+            if (block) {
                 var elRect = el.getBoundingClientRect();
                 // 转换为相对于画布的百分比坐标
                 block.style.x = ((elRect.left - canvasRect.left) / canvasRect.width) * 100;
                 block.style.y = ((elRect.top - canvasRect.top) / canvasRect.height) * 100;
                 block.style.w = (elRect.width / canvasRect.width) * 100;
+                // tabbar 默认宽度 100%
+                if (block.type === 'tabbar') {
+                    block.style.w = 100;
+                }
             }
         }
 
@@ -4187,7 +4194,7 @@
 
         for (var i = 0; i < blocks.length; i++) {
             var other = blocks[i];
-            if (other.id === currentDragBlock.id || other.type === 'tabbar') continue;
+            if (other.id === currentDragBlock.id) continue; // tabbar 也参与对齐
 
             var otherX = other.style.x || 0;
             var otherY = other.style.y || 0;
@@ -4767,10 +4774,19 @@
                 return '<div class="block ios-spacer ' + cls + '" data-id="' + block.id + '" draggable="' + (layoutMode === 'flow') + '" style="height:' + s.h + 'px;' + posStyle + '">' + actions + resizeHandles + '</div>';
 
             case 'tabbar':
-                var tabHtml = '<div class="block ios-tabbar ' + cls + '" data-id="' + block.id + '" style="background:' + s.bg + '">' + actions;
+                // tabbar 也支持自由拖拽和定位
+                var tabbarPosStyle = '';
+                if (layoutMode === 'free') {
+                    cls += ' free-position';
+                    var tabbarWidth = (s.w === 'auto' || s.w === undefined) ? '100%' : (s.w || 100) + '%';
+                    tabbarPosStyle = 'left:' + (s.x || 0) + '%;top:' + (s.y || 0) + '%;width:' + tabbarWidth + ';';
+                }
+                var tabHtml = '<div class="block ios-tabbar ' + cls + '" data-id="' + block.id + '" style="background:' + s.bg + ';' + tabbarPosStyle + '">' + actions + resizeHandles;
                 for (var i = 0; i < p.items.length; i++) {
                     var item = p.items[i];
-                    tabHtml += '<div class="ios-tabbar-item ' + (item.active ? 'active' : '') + '" style="color:' + (item.active ? s.activeColor : s.inactiveColor) + '" data-tab-idx="' + i + '"><i class="fas ' + item.icon + '"></i><span>' + (item.label || '') + '</span></div>';
+                    var iconSize = s.iconSize || 24;
+                    var labelSize = s.labelSize || 10;
+                    tabHtml += '<div class="ios-tabbar-item ' + (item.active ? 'active' : '') + '" style="color:' + (item.active ? s.activeColor : s.inactiveColor) + '" data-tab-idx="' + i + '"><i class="fas ' + item.icon + '" style="font-size:' + iconSize + 'px"></i><span style="font-size:' + labelSize + 'px">' + (item.label || '') + '</span></div>';
                 }
                 return tabHtml + '</div>';
 
@@ -6100,39 +6116,50 @@
 
     // 构建导出 HTML（保持与编辑器画布一致的手机容器结构）
     // 生成导出用的干净HTML（无编辑器控件）
-    function renderExportBlock(block, exportType, index) {
+    // 【重要】必须从 block.style 读取位置信息，确保导出与画布一致
+    function renderExportBlock(block, exportType, index, useAbsolutePosition) {
         var s = block.style;
         var p = block.props;
         var inspectAttr = exportType === 'inspect' ? ' data-inspect="block-' + index + '"' : '';
+
+        // 计算位置样式（自由布局时使用绝对定位）
+        var posStyle = '';
+        if (useAbsolutePosition && s.x !== undefined && s.y !== undefined) {
+            var widthStyle = (s.w === 'auto' || s.w === undefined) ? 'auto' : s.w + '%';
+            posStyle = 'position:absolute;left:' + (s.x || 0) + '%;top:' + (s.y || 0) + '%;width:' + widthStyle + ';';
+        }
+        // 调试：输出每个组件的定位信息
+        console.log('[渲染组件] id=' + block.id + ' type=' + block.type +
+                    ' posStyle=' + (posStyle || '无(流式)'));
 
         switch (block.type) {
             case 'navbar':
                 var navRadius = s.radius ? 'border-radius:' + s.radius + 'px;' : '';
                 var navHeight = s.h && s.h !== 'auto' ? 'height:' + s.h + 'px;' : '';
-                return '<div class="ios-navbar"' + inspectAttr + ' style="background:' + s.bg + ';' + navRadius + navHeight + '">' +
+                return '<div class="ios-navbar"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';' + navRadius + navHeight + '">' +
                     '<div class="ios-navbar-left">' + (p.showLeft ? '<button class="ios-navbar-btn" style="color:' + s.btnColor + '"><i class="fas fa-chevron-left"></i> ' + p.left + '</button>' : '') + '</div>' +
                     '<span class="ios-navbar-title" style="color:' + s.titleColor + ';font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + '">' + (p.title || '') + '</span>' +
                     '<div class="ios-navbar-right">' + (p.showRight ? '<button class="ios-navbar-btn" style="color:' + s.btnColor + '">' + p.right + '</button>' : '') + '</div></div>';
 
             case 'large-title':
                 var ltRadius = s.radius ? 'border-radius:' + s.radius + 'px;' : '';
-                return '<div class="ios-large-title"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;' + ltRadius + '">' +
+                return '<div class="ios-large-title"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;' + ltRadius + '">' +
                     '<h1 style="color:' + s.color + ';font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + ';line-height:' + s.lineHeight + '">' + (p.title || '') + '</h1></div>';
 
             case 'search':
                 var searchRadius = s.radius ? 'border-radius:' + s.radius + 'px;' : '';
-                return '<div class="ios-search"' + inspectAttr + ' style="background:' + s.bg + ';padding:8px ' + s.px + 'px;' + searchRadius + '">' +
+                return '<div class="ios-search"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';padding:8px ' + s.px + 'px;' + searchRadius + '">' +
                     '<div class="ios-search-wrapper"><i class="fas fa-search" style="color:' + s.placeholderColor + '"></i>' +
                     '<input type="text" class="ios-search-input" placeholder="' + p.placeholder + '" style="background:' + s.inputBg + ';color:' + s.color + ';font-size:' + s.fontSize + 'px;border-radius:' + (s.inputRadius || 10) + 'px"></div></div>';
 
             case 'section-header':
                 var shRadius = s.radius ? 'border-radius:' + s.radius + 'px;' : '';
-                return '<div class="ios-section-header"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px 8px;' + shRadius + '">' +
+                return '<div class="ios-section-header"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px 8px;' + shRadius + '">' +
                     '<span style="color:' + s.color + ';font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + '">' + (p.title || '') + '</span></div>';
 
             case 'list-item':
                 var liIconRadius = s.iconRadius !== undefined ? s.iconRadius : 7;
-                return '<div class="ios-list-item"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' +
+                return '<div class="ios-list-item"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' +
                     '<div class="ios-list-icon" style="background:' + p.iconBg + ';width:' + s.iconSize + 'px;height:' + s.iconSize + 'px;border-radius:' + liIconRadius + 'px"><i class="fas ' + p.icon + '"></i></div>' +
                     '<div class="ios-list-content"><div class="ios-list-title" style="color:' + s.titleColor + ';font-size:' + s.titleSize + 'px;font-weight:' + (s.titleWeight || 400) + '">' + (p.title || '') + '</div>' +
                     (p.subtitle ? '<div class="ios-list-subtitle" style="color:' + s.subColor + ';font-size:' + s.subSize + 'px">' + p.subtitle + '</div>' : '') + '</div>' +
@@ -6140,51 +6167,60 @@
                     (p.arrow ? '<span class="ios-list-accessory"><i class="fas fa-chevron-right"></i></span>' : '') + '</div>';
 
             case 'toggle-item':
-                return '<div class="ios-toggle-item"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' +
+                return '<div class="ios-toggle-item"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' +
                     '<span style="color:' + s.color + ';font-size:' + s.fontSize + 'px">' + (p.title || '') + '</span>' +
                     '<div class="ios-toggle ' + (p.isOn ? 'on' : '') + '" style="background:' + (p.isOn ? (s.onColor || '#34c759') : (s.offColor || '#d2d2d7')) + '"></div></div>';
 
             case 'card':
-                return '<div class="ios-card"' + inspectAttr + ' style="background:' + s.bg + ';margin:' + s.my + 'px ' + s.mx + 'px;border-radius:' + s.radius + 'px;">' +
+                return '<div class="ios-card"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';margin:' + (posStyle ? '0' : s.my + 'px ' + s.mx + 'px') + ';border-radius:' + s.radius + 'px;">' +
                     (p.showImg ? '<div class="ios-card-image" style="height:' + s.imgH + 'px;background:' + s.imgBg + ';color:' + s.imgColor + '"><i class="fas ' + p.imgIcon + '"></i></div>' : '') +
                     '<div class="ios-card-body" style="padding:' + s.py + 'px ' + s.px + 'px"><div class="ios-card-title" style="color:' + s.titleColor + ';font-size:' + s.titleSize + 'px;font-weight:' + (s.titleWeight || 600) + '">' + (p.title || '') + '</div>' +
                     '<div class="ios-card-desc" style="color:' + s.descColor + ';font-size:' + s.descSize + 'px">' + (p.desc || '') + '</div></div></div>';
 
             case 'button':
-                return '<div class="ios-button"' + inspectAttr + ' style="margin:' + s.my + 'px ' + s.mx + 'px;">' +
-                    '<button style="background:' + s.bg + ';color:' + s.color + ';font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + ';height:' + s.h + 'px;border-radius:' + s.radius + 'px">' + (p.text || '按钮') + '</button></div>';
+                return '<div class="ios-button"' + inspectAttr + ' style="' + posStyle + 'margin:' + (posStyle ? '0' : s.my + 'px ' + s.mx + 'px') + ';">' +
+                    '<button style="background:' + s.bg + ';color:' + s.color + ';font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + ';height:' + s.h + 'px;border-radius:' + s.radius + 'px;width:100%">' + (p.text || '按钮') + '</button></div>';
 
             case 'avatar-block':
                 var abAvatarRadius = s.avatarRadius !== undefined ? s.avatarRadius : Math.round(s.avatarSize / 2);
-                return '<div class="ios-avatar-block"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' +
+                return '<div class="ios-avatar-block"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' +
                     '<div class="ios-avatar" style="width:' + s.avatarSize + 'px;height:' + s.avatarSize + 'px;font-size:' + (s.avatarSize * 0.4) + 'px;background:' + s.avatarBg + ';color:' + s.avatarColor + ';border-radius:' + abAvatarRadius + 'px"><i class="fas ' + p.icon + '"></i></div>' +
                     '<div class="ios-avatar-name" style="color:' + s.nameColor + ';font-size:' + s.nameSize + 'px;font-weight:' + (s.nameWeight || 600) + '">' + (p.name || '') + '</div>' +
                     '<div class="ios-avatar-subtitle" style="color:' + s.subColor + ';font-size:' + s.subSize + 'px">' + (p.subtitle || '') + '</div></div>';
 
             case 'text-block':
-                return '<div class="ios-text-block"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' +
+                return '<div class="ios-text-block"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' +
                     '<p style="color:' + s.color + ';font-size:' + s.fontSize + 'px;font-weight:' + (s.fontWeight || 400) + ';line-height:' + s.lineHeight + '">' + (p.text || '') + '</p></div>';
 
             case 'image-block':
-                return '<div class="ios-image-block"' + inspectAttr + ' style="background:' + s.bg + ';height:' + s.h + 'px;margin:' + (s.my || 0) + 'px ' + (s.mx || 0) + 'px;border-radius:' + s.radius + 'px;display:flex;align-items:center;justify-content:center;color:' + s.color + '">' +
+                return '<div class="ios-image-block"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';height:' + s.h + 'px;margin:' + (posStyle ? '0' : (s.my || 0) + 'px ' + (s.mx || 0) + 'px') + ';border-radius:' + s.radius + 'px;display:flex;align-items:center;justify-content:center;color:' + s.color + '">' +
                     '<i class="fas ' + p.icon + '" style="font-size:32px"></i></div>';
 
             case 'divider':
-                return '<div class="ios-divider"' + inspectAttr + ' style="background:' + s.bg + ';height:' + s.h + 'px;"></div>';
+                return '<div class="ios-divider"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';height:' + s.h + 'px;"></div>';
 
             case 'spacer':
-                return '<div class="ios-spacer"' + inspectAttr + ' style="height:' + s.h + 'px;"></div>';
+                return '<div class="ios-spacer"' + inspectAttr + ' style="' + posStyle + 'height:' + s.h + 'px;"></div>';
 
             case 'tabbar':
+                // tabbar 也支持自由定位
+                var tabbarPosStyle = '';
+                if (useAbsolutePosition && s.x !== undefined && s.y !== undefined) {
+                    var tabbarWidth = (s.w === 'auto' || s.w === undefined) ? '100%' : s.w + '%';
+                    tabbarPosStyle = 'position:absolute;left:' + (s.x || 0) + '%;top:' + (s.y || 0) + '%;width:' + tabbarWidth + ';';
+                }
                 var tabItems = (p.items || []).map(function(item) {
-                    return '<div class="ios-tabbar-item ' + (item.active ? 'active' : '') + '">' +
-                        '<i class="fas ' + item.icon + '"></i>' +
-                        (item.label ? '<span>' + item.label + '</span>' : '') + '</div>';
+                    var itemColor = item.active ? (s.activeColor || '#111') : (s.inactiveColor || '#999');
+                    var iconSize = s.iconSize || 24;
+                    var labelSize = s.labelSize || 10;
+                    return '<div class="ios-tabbar-item ' + (item.active ? 'active' : '') + '" style="color:' + itemColor + '">' +
+                        '<i class="fas ' + item.icon + '" style="font-size:' + iconSize + 'px"></i>' +
+                        (item.label ? '<span style="font-size:' + labelSize + 'px">' + item.label + '</span>' : '') + '</div>';
                 }).join('');
-                return '<div class="ios-tabbar"' + inspectAttr + '>' + tabItems + '</div>';
+                return '<div class="ios-tabbar"' + inspectAttr + ' style="' + tabbarPosStyle + 'background:' + (s.bg || '#fff') + '">' + tabItems + '</div>';
 
             case 'notice-bar':
-                return '<div class="ios-notice-bar"' + inspectAttr + ' style="background:' + s.bg + ';color:' + s.color + ';padding:' + s.py + 'px ' + s.px + 'px;font-size:' + s.fontSize + 'px;">' +
+                return '<div class="ios-notice-bar"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';color:' + s.color + ';padding:' + s.py + 'px ' + s.px + 'px;font-size:' + s.fontSize + 'px;">' +
                     (p.icon ? '<i class="fas ' + p.icon + '" style="color:' + s.iconColor + ';margin-right:8px"></i>' : '') +
                     '<span>' + (p.text || '') + '</span></div>';
 
@@ -6196,26 +6232,71 @@
                         '<div class="ios-step-num" style="background:' + (isActive ? s.activeColor : s.inactiveColor) + '">' + (i + 1) + '</div>' +
                         '<div class="ios-step-title" style="color:' + (isActive ? s.activeColor : s.inactiveColor) + '">' + item + '</div></div>';
                 }).join('');
-                return '<div class="ios-steps"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' + stepsHtml + '</div>';
+                return '<div class="ios-steps"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' + stepsHtml + '</div>';
 
             case 'input-field':
-                return '<div class="ios-input-field"' + inspectAttr + ' style="background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' +
+                return '<div class="ios-input-field"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';padding:' + s.py + 'px ' + s.px + 'px;">' +
                     (p.label ? '<label style="color:' + s.labelColor + '">' + p.label + '</label>' : '') +
                     '<input type="' + (p.type || 'text') + '" placeholder="' + (p.placeholder || '') + '" style="background:' + s.inputBg + ';color:' + s.inputColor + ';font-size:' + s.fontSize + 'px;border-radius:' + s.radius + 'px;height:' + s.h + 'px"></div>';
 
             case 'option-item':
-                return '<div class="ios-option-item"' + inspectAttr + ' style="background:' + s.bg + ';padding:12px 16px;">' +
+                return '<div class="ios-option-item"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';padding:12px 16px;">' +
                     '<div class="ios-option-check" style="background:' + (p.checked ? s.checkedBg : s.iconBg) + ';color:' + (p.checked ? '#fff' : s.uncheckedColor) + '">' +
                     (p.checked ? '<i class="fas fa-check"></i>' : '') + '</div>' +
                     '<div class="ios-option-content"><span style="color:' + s.color + ';font-size:' + s.fontSize + 'px">' + (p.text || '') + '</span>' +
                     (p.desc ? '<span style="color:' + s.descColor + ';font-size:' + s.descSize + 'px">' + p.desc + '</span>' : '') + '</div></div>';
 
             case 'bottom-button':
-                return '<div class="ios-bottom-button"' + inspectAttr + ' style="background:' + s.bg + ';padding:12px 16px;display:flex;gap:12px;">' +
+                return '<div class="ios-bottom-button"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';padding:12px 16px;display:flex;gap:12px;">' +
                     (p.showLeft ? '<button style="flex:1;background:' + s.leftBg + ';color:' + s.leftColor + ';border:1px solid ' + s.leftBorderColor + ';height:' + s.h + 'px;border-radius:' + s.radius + 'px;font-size:' + s.fontSize + 'px">' + (p.leftText || '') + '</button>' : '') +
                     '<button style="flex:2;background:' + s.rightBg + ';color:' + s.rightColor + ';border:none;height:' + s.h + 'px;border-radius:' + s.radius + 'px;font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + '">' + (p.rightText || '') + '</button></div>';
 
+            case 'icon':
+                var iconExportPosStyle = posStyle || '';
+                return '<div class="ios-icon-block"' + inspectAttr + ' style="' + iconExportPosStyle + 'display:inline-block;">' +
+                    '<i class="fas ' + p.icon + '" style="color:' + s.color + ';font-size:' + s.fontSize + 'px"></i></div>';
+
+            case 'number-picker':
+                var npWheelItems = '';
+                var npCurr = p.value || 1;
+                var npStep = p.step || 1;
+                for (var npi = -2; npi <= 2; npi++) {
+                    var npItemVal = npCurr + (npi * npStep);
+                    var npItemCls = npi === 0 ? 'active' : (Math.abs(npi) === 1 ? 'near' : 'far');
+                    npWheelItems += '<div class="ios-number-picker-item ' + npItemCls + '">' + npItemVal + '</div>';
+                }
+                return '<div class="ios-number-picker"' + inspectAttr + ' style="' + posStyle + 'background:' + s.bg + ';padding:8px 16px;display:flex;align-items:center;justify-content:space-between;">' +
+                    '<span style="color:' + s.color + ';font-size:' + s.fontSize + 'px">' + (p.label || '') + '</span>' +
+                    '<div style="display:flex;align-items:center;gap:8px;">' +
+                    '<span style="color:' + s.valueColor + ';font-size:18px;font-weight:600">' + npCurr + '</span>' +
+                    '<span style="color:' + s.color + '">' + (p.unit || '') + '</span></div></div>';
+
+            case 'badge':
+                var badgeExportBg = p.type === 'primary' ? s.bg : (p.type === 'success' ? '#34c759' : (p.type === 'warning' ? '#ff9500' : s.bg));
+                return '<span class="ios-badge"' + inspectAttr + ' style="' + posStyle + 'display:inline-flex;background:' + badgeExportBg + ';color:' + s.color + ';font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + ';padding:' + s.py + 'px ' + s.px + 'px;border-radius:' + s.radius + 'px;">' + (p.text || '') + '</span>';
+
+            case 'progress-bar':
+                var pbPctVal = Math.min(100, Math.max(0, ((p.value || 0) / (p.max || 100)) * 100));
+                return '<div class="ios-progress-bar"' + inspectAttr + ' style="' + posStyle + 'margin:' + (posStyle ? '0' : (s.my || 0) + 'px ' + (s.mx || 0) + 'px') + ';">' +
+                    '<div style="background:' + s.bg + ';height:' + s.h + 'px;border-radius:' + s.radius + 'px;overflow:hidden;">' +
+                    '<div style="background:' + s.barColor + ';height:100%;width:' + pbPctVal + '%;border-radius:' + s.radius + 'px;"></div></div>' +
+                    (p.showLabel ? '<div style="text-align:center;font-size:12px;color:#999;margin-top:4px;">' + (p.value || 0) + '/' + (p.max || 100) + '</div>' : '') + '</div>';
+
+            case 'rating':
+                var ratingExportHtml = '<div class="ios-rating"' + inspectAttr + ' style="' + posStyle + 'display:inline-flex;gap:4px;">';
+                for (var rei = 1; rei <= (p.max || 5); rei++) {
+                    var starExportColor = rei <= (p.value || 0) ? s.color : (s.emptyColor || '#ddd');
+                    ratingExportHtml += '<i class="fas fa-star" style="font-size:' + s.fontSize + 'px;color:' + starExportColor + ';"></i>';
+                }
+                return ratingExportHtml + '</div>';
+
+            case 'tag':
+                return '<span class="ios-tag"' + inspectAttr + ' style="' + posStyle + 'display:inline-flex;align-items:center;gap:4px;background:' + s.bg + ';color:' + s.color + ';font-size:' + s.fontSize + 'px;font-weight:' + s.fontWeight + ';padding:' + s.py + 'px ' + s.px + 'px;border-radius:' + s.radius + 'px;">' +
+                    (p.text || '') + '</span>';
+
             default:
+                // 未知组件类型，输出警告
+                console.warn('[导出警告] 未处理的组件类型:', block.type);
                 return '';
         }
     }
@@ -6254,6 +6335,9 @@
         });
         console.log('╚══════════════════════════════════════════════════════════╝');
 
+        // 检测是否使用自由布局（根据 layoutMode 或检查是否有位置信息）
+        var useAbsolutePosition = layoutMode === 'free';
+
         // 从排序后的 blocks 生成内容
         var navbarHtml = '';
         var tabbarHtml = '';
@@ -6263,21 +6347,22 @@
 
         for (var i = 0; i < sortedBlocks.length; i++) {
             var block = sortedBlocks[i];
-            var html = renderExportBlock(block, exportType, blockIndex++);
+            // 传递 useAbsolutePosition 参数，确保导出时使用画布中的实际位置
+            var html = renderExportBlock(block, exportType, blockIndex++, useAbsolutePosition);
             if (html === '') {
                 console.warn('[导出警告] 组件 id=' + block.id + ' type=' + block.type + ' 返回空HTML');
             }
-            if (block.type === 'navbar') {
+            if (block.type === 'navbar' && !useAbsolutePosition) {
                 navbarHtml = html;
-            } else if (block.type === 'tabbar') {
+            } else if (block.type === 'tabbar' && !useAbsolutePosition) {
                 tabbarHtml = html;
             } else {
                 contentHtml += html;
             }
         }
-        console.log('[导出统计] navbar=' + (navbarHtml ? '有' : '无') +
-                    ' content组件=' + (sortedBlocks.length - (navbarHtml ? 1 : 0) - (tabbarHtml ? 1 : 0)) +
-                    ' tabbar=' + (tabbarHtml ? '有' : '无'));
+        console.log('[导出统计] 模式=' + (useAbsolutePosition ? '自由布局(绝对定位)' : '流式布局') +
+                    ' 总组件数=' + sortedBlocks.length +
+                    (useAbsolutePosition ? '' : ' navbar=' + (navbarHtml ? '有' : '无') + ' tabbar=' + (tabbarHtml ? '有' : '无')));
 
         var hasHeader = navbarHtml !== '';
         var hasTabbar = tabbarHtml !== '';
@@ -6296,23 +6381,24 @@
             '.export-page { min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; background: #f4f5f7; padding: 24px 0; }',
             '',
             '/* 屏幕容器 - 390px宽度，圆角，轻阴影 */',
-            '.phone-screen { position: relative; width: 390px; min-height: 844px; background: var(--bg); border-radius: 32px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }',
+            '.phone-screen { position: relative; width: 390px; height: 844px; background: var(--bg); border-radius: 32px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }',
             '',
             '/* 顶部导航栏 - 固定在顶部 */',
             '.screen-header { position: sticky; top: 0; left: 0; right: 0; z-index: 50; background: var(--bg-card); border-radius: 32px 32px 0 0; }',
             '',
-            '/* 页面内容 */',
-            '.screen-content { min-height: calc(844px - ' + (hasHeader ? headerHeight : 0) + 'px - ' + (hasTabbar ? '64px' : '0px') + '); padding-bottom: ' + (hasTabbar ? '64px' : '20px') + '; }',
+            '/* 页面内容 - 支持自由布局的绝对定位 */',
+            '.screen-content { position: relative; width: 100%; height: 100%; }',
             '',
-            '/* 底部 TabBar - 固定在底部 */',
+            '/* 底部 TabBar - 固定在底部（流式布局时）*/',
             '.screen-tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; z-index: 40; background: var(--bg-card); border-top: 1px solid rgba(0,0,0,0.06); display: flex; align-items: center; padding: 8px 0 4px; border-radius: 0 0 32px 32px; }',
             '',
             '/* 组件样式 */',
             '.block.free-position { position: absolute; }',
             '.ios-navbar { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); }',
-            '.ios-navbar-left, .ios-navbar-right { width: 60px; display: flex; align-items: center; }',
-            '.ios-navbar-right { justify-content: flex-end; }',
-            '.ios-navbar-title { font-size: 17px; font-weight: 600; }',
+            '/* 修复导航按钮文字换行问题 */',
+            '.ios-navbar-left { display: flex; align-items: center; gap: 6px; white-space: nowrap; flex: 0 0 auto; min-width: 60px; }',
+            '.ios-navbar-right { display: flex; align-items: center; justify-content: flex-end; white-space: nowrap; flex: 0 0 auto; min-width: 60px; }',
+            '.ios-navbar-title { flex: 1; text-align: center; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
             '.ios-navbar-btn { background: none; border: none; font-size: 17px; cursor: pointer; }',
             '.ios-large-title { padding: 8px 16px 16px; }',
             '.ios-large-title h1 { font-size: 34px; font-weight: 700; }',
@@ -6555,6 +6641,7 @@
         ].join('\n') : '';
 
         // 构建完整 HTML 字符串 - 干净结构（无手机壳）
+        // 【重要】自由布局时所有组件都在 screen-content 中，使用绝对定位
         var html = [
             '<!DOCTYPE html>',
             '<html lang="zh-CN">',
@@ -6571,11 +6658,15 @@
             '<body>',
             '<div class="export-page">',
             '  <div class="phone-screen">',
-            hasHeader ? '    <div class="screen-header">' + navbarHtml + '</div>' : '',
+            // 自由布局：所有组件都在 screen-content 中（包括 navbar/tabbar）
+            // 流式布局：navbar 在 screen-header 中
+            (hasHeader && !useAbsolutePosition) ? '    <div class="screen-header">' + navbarHtml + '</div>' : '',
             '    <div class="screen-content">',
             contentHtml,
             '    </div>',
-            hasTabbar ? '    <div class="screen-tabbar">' + tabbarHtml + '</div>' : '',
+            // 自由布局：tabbar 也在 contentHtml 中（已包含）
+            // 流式布局：tabbar 在 screen-tabbar 中
+            (hasTabbar && !useAbsolutePosition) ? '    <div class="screen-tabbar">' + tabbarHtml + '</div>' : '',
             '  </div>',
             '</div>',
             inspectHTML,
